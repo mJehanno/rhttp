@@ -1,10 +1,11 @@
 use std::{
     error::Error,
+    fs,
     io::{BufReader, prelude::*},
     net::{TcpListener, TcpStream},
 };
 
-const ALLOWED_METHOD: &'static [&str] = &["GET", "POST", "PUT", "PATCH", "OPERATION", "HEAD"];
+const ALLOWED_METHOD: &'static [&str] = &["GET", "POST", "PUT", "PATCH", "OPTION", "HEAD"];
 
 enum MalFormedHeaderDetail {
     InvalidHeaderLineLen,
@@ -20,12 +21,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind("127.0.0.1:7878")?;
     println!("Server listening on :7878");
 
+    let index = fs::read_to_string("index.html")?;
+
     for incoming in listener.incoming() {
         let Ok(mut stream) = incoming else {
             panic!("Failed to connect");
         };
         let _ = handle_connection(&stream);
-        let response = "HTTP/1.1 200 OK\r\n\r\n";
+        let status_line = "HTTP/1.1 200 OK";
+        let response = format!(
+            "{status_line}\r\nContent-Length: {}\r\n\r\n{index}",
+            index.len()
+        );
         stream.write_all(response.as_bytes()).unwrap();
     }
 
